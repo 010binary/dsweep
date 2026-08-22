@@ -1,3 +1,3 @@
 module github.com/010binary/dsweep
 
-go 1.26.3
+go 1.26
