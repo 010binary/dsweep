@@ -1,0 +1,54 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  # Never publish a tag that cannot pass its own tests. A tag is cheap to
+  # delete; a broken release in someone's Homebrew is not.
+  verify:
+    name: verify
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - run: go test -race ./...
+
+  release:
+    name: release
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      # Required to create the GitHub Release and upload assets.
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # GoReleaser needs full history and tags to build a changelog and
+          # resolve the version.
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: goreleaser/goreleaser-action@v7
+        with:
+          version: '~> v2'
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

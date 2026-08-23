@@ -14,7 +14,7 @@ LDFLAGS := -s -w \
 PLATFORMS := darwin/amd64 darwin/arm64 linux/amd64 linux/arm64 windows/amd64
 
 .DEFAULT_GOAL := help
-.PHONY: help run build build-all install test cover fmt vet tidy lint check clean
+.PHONY: help run build build-all install test cover fmt vet tidy lint vuln snapshot check ci clean
 
 help: ## Show this help
 	@awk 'BEGIN{FS=":.*##"} /^[a-zA-Z_-]+:.*##/ {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -60,7 +60,21 @@ tidy: ## Tidy and verify module dependencies
 lint: ## Run golangci-lint (requires golangci-lint on PATH)
 	golangci-lint run
 
+vuln: ## Scan dependencies for known vulnerabilities
+	go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
+snapshot: ## Build an unpublished local release into dist/ (requires goreleaser)
+	goreleaser release --snapshot --clean
+
 check: fmt vet test ## Format, vet, and test — run this before pushing
+
+ci: ## Run everything CI runs, locally
+	go mod tidy -diff
+	go mod verify
+	golangci-lint run
+	go test -race -shuffle=on ./...
+	$(MAKE) build-all
+	$(MAKE) vuln
 
 clean: ## Remove build and coverage artifacts
 	rm -rf bin/ dist/ coverage.out coverage.html

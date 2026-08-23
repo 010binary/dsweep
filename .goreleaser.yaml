@@ -1,0 +1,89 @@
+# GoReleaser configuration for dsweep.
+# Validate changes with:  goreleaser check
+# Test a full build with: goreleaser release --snapshot --clean
+version: 2
+
+project_name: dsweep
+
+before:
+  hooks:
+    - go mod tidy
+    - go mod verify
+
+builds:
+  - id: dsweep
+    main: ./cmd/dsweep
+    binary: dsweep
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X github.com/010binary/dsweep/internal/buildinfo.Version={{ .Version }}
+      - -X github.com/010binary/dsweep/internal/buildinfo.Commit={{ .ShortCommit }}
+      - -X github.com/010binary/dsweep/internal/buildinfo.Date={{ .CommitDate }}
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    # Stamp binaries with the commit time rather than the build time so the
+    # same tag always produces byte-identical output.
+    mod_timestamp: '{{ .CommitTimestamp }}'
+
+archives:
+  - id: dsweep
+    formats: [tar.gz]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - README.md
+      - LICENSE
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+changelog:
+  use: github
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+      - '^ci:'
+      - '^style:'
+      - Merge pull request
+      - Merge branch
+
+release:
+  draft: false
+  prerelease: auto
+  footer: |
+    **Verify your download:**
+    ```sh
+    sha256sum -c checksums.txt --ignore-missing
+    ```
+
+# A Homebrew tap needs a separate repo (010binary/homebrew-tap) and a PAT with
+# write access to it, stored as the HOMEBREW_TAP_GITHUB_TOKEN secret. Left
+# commented out so the first release cannot fail on missing setup.
+#
+# brews:
+#   - name: dsweep
+#     repository:
+#       owner: 010binary
+#       name: homebrew-tap
+#       token: '{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}'
+#     homepage: https://github.com/010binary/dsweep
+#     description: Find and reclaim wasted disk space, safely
+#     license: MIT
+#     test: |
+#       system "#{bin}/dsweep", "version"

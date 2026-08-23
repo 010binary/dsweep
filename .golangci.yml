@@ -1,0 +1,65 @@
+# golangci-lint configuration (schema v2).
+# Validate with: golangci-lint config verify
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  # The standard set (errcheck, govet, ineffassign, staticcheck, unused)
+  # plus the additions below.
+  default: standard
+  enable:
+    - bodyclose      # unclosed HTTP response bodies
+    - copyloopvar    # loop-variable capture
+    - errorlint      # %v where %w belongs; comparisons that should use errors.Is
+    - gocritic       # broad correctness and style checks
+    - misspell
+    - nilerr         # returning nil after a non-nil error
+    - noctx          # requests built without a context
+    - predeclared    # shadowing len, cap, new, ...
+    - revive         # replaces the deprecated golint
+    - unconvert      # redundant type conversions
+    - usestdlibvars  # string literals that have stdlib constants
+    - wastedassign
+    - whitespace
+
+  settings:
+    errcheck:
+      # An ignored type assertion is a panic waiting for the wrong input.
+      check-type-assertions: true
+    govet:
+      enable-all: true
+      disable:
+        # Struct field ordering is not worth the churn at this stage.
+        - fieldalignment
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - performance
+        - style
+    revive:
+      rules:
+        - name: exported
+        - name: error-strings
+        - name: error-return
+        - name: context-as-argument
+        - name: indent-error-flow
+
+  exclusions:
+    generated: lax
+    rules:
+      # Tests may ignore errors from helpers and assert loosely.
+      - path: _test\.go
+        linters:
+          - errcheck
+          - gocritic
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/010binary/dsweep

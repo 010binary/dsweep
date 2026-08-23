@@ -1,5 +1,7 @@
 # dsweep
 
+[![CI](https://github.com/010binary/dsweep/actions/workflows/ci.yml/badge.svg)](https://github.com/010binary/dsweep/actions/workflows/ci.yml)
+
 Find and reclaim wasted disk space — safely.
 
 `dsweep` walks a directory tree, identifies reclaimable junk (dependency
@@ -119,10 +121,22 @@ esac
 ```sh
 make help        # list every target
 make check       # fmt + vet + test -race, run this before pushing
+make ci          # everything CI runs, locally
 make test        # tests with the race detector
 make cover       # HTML coverage report
 make build-all   # cross-compile to dist/ for all supported platforms
+make vuln        # scan dependencies for known vulnerabilities
+make snapshot    # build an unpublished release into dist/
 ```
+
+### CI
+
+Every push and pull request runs five jobs: tests on Linux, macOS, and Windows
+(`-race -shuffle=on`), `golangci-lint`, a `go mod tidy -diff` check, a
+cross-compile of every release target, and `govulncheck`.
+
+Pushing a `v*` tag runs the test matrix again and only then publishes — see
+[Releasing](#releasing).
 
 ### Layout
 
@@ -142,6 +156,27 @@ Two rules govern output:
    designed in, not retrofitted onto scattered `fmt.Println` calls. The package
    arrives with the reporters in phase 3; until then `internal/cli` prints its
    own help text.
+
+## Releasing
+
+Releases are cut by GoReleaser from an annotated tag:
+
+```sh
+git tag -a v0.1.0 -m 'v0.1.0'
+git push origin v0.1.0
+```
+
+The workflow re-runs the test matrix first and aborts the release if any
+platform fails — a tag is cheap to delete, a broken binary in someone's
+package manager is not. Builds are stamped with the commit timestamp rather
+than the build time, so re-releasing a tag produces byte-identical artifacts.
+
+Validate config changes without publishing:
+
+```sh
+goreleaser check              # lint .goreleaser.yaml
+make snapshot                 # full local build, nothing uploaded
+```
 
 ## Roadmap
 
