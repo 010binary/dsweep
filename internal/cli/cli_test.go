@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
@@ -75,5 +76,24 @@ func TestUsageDocumentsEveryExitCode(t *testing.T) {
 		if !strings.Contains(usage, string(rune('0'+int(code)))) {
 			t.Errorf("usage text does not mention exit code %d", int(code))
 		}
+	}
+}
+
+// errWriter fails every write, standing in for a closed pipe or a full disk.
+type errWriter struct{}
+
+func (errWriter) Write([]byte) (int, error) { return 0, errors.New("no space left on device") }
+
+func TestRunReportsWriteFailure(t *testing.T) {
+	t.Parallel()
+
+	var stderr bytes.Buffer
+	err := Run(context.Background(), []string{"help"}, errWriter{}, &stderr)
+
+	if got := exit.FromError(err); got != exit.Failure {
+		t.Errorf("exit code = %d, want %d when stdout is unwritable", got, exit.Failure)
+	}
+	if !strings.Contains(err.Error(), "no space left on device") {
+		t.Errorf("error = %q, want it to wrap the write failure", err)
 	}
 }
