@@ -44,20 +44,28 @@ func Run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	}
 
 	if len(args) == 0 {
-		fmt.Fprint(stdout, usage)
-		return nil
+		return write(stdout, usage)
 	}
 
 	switch args[0] {
 	case "help", "-h", "--help":
-		fmt.Fprint(stdout, usage)
-		return nil
+		return write(stdout, usage)
 
 	case "version", "--version":
-		fmt.Fprintln(stdout, buildinfo.String())
-		return nil
+		return write(stdout, buildinfo.String()+"\n")
 
 	default:
 		return exit.Usagef("unknown command %q; run 'dsweep help' for usage", args[0])
 	}
+}
+
+// write sends s to w, reporting a failed write rather than discarding it.
+// Output can genuinely fail — a closed pipe, a full disk — and once the
+// reporters are streaming multi-megabyte scans, silently truncating them
+// would be worse than exiting non-zero.
+func write(w io.Writer, s string) error {
+	if _, err := fmt.Fprint(w, s); err != nil {
+		return exit.Failuref("write output: %w", err)
+	}
+	return nil
 }

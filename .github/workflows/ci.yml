@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Lets you build downloadable binaries on demand from the Actions tab,
+  # on any branch, without tagging a release.
+  workflow_dispatch:
 
 # Least privilege: nothing here needs to write to the repo.
 permissions:
@@ -82,21 +85,43 @@ jobs:
       - name: Verify dependencies
         run: go mod verify
 
-  cross:
-    name: cross-compile
+  # Builds the real release artifacts without publishing them. This both
+  # cross-compiles every target the 3-OS test matrix cannot reach and proves
+  # .goreleaser.yaml still works — so a release config break surfaces here
+  # rather than at tag time, in public.
+  build:
+    name: build (snapshot)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          # GoReleaser derives the snapshot version from git describe.
+          fetch-depth: 0
 
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: true
 
-      # Catches arch-specific breakage the 3-OS test matrix misses —
-      # size arithmetic on 32-bit in particular.
-      - name: Build every target
-        run: make build-all
+      - uses: goreleaser/goreleaser-action@v7
+        with:
+          version: '~> v2'
+          args: release --snapshot --clean
+        env:
+          # Not used for publishing in snapshot mode; passed so GoReleaser
+          # never has to guess. Read-only, per the workflow permissions above.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload binaries
+        uses: actions/upload-artifact@v7
+        with:
+          name: dsweep-binaries
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/checksums.txt
+          if-no-files-found: error
+          retention-days: 14
 
   vuln:
     name: govulncheck
