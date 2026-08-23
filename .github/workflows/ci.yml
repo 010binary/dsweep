@@ -28,6 +28,12 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+    defaults:
+      run:
+        # Windows would otherwise default to PowerShell, which mangles
+        # unquoted arguments like -coverprofile=coverage.out into two args.
+        # bash ships on all three runners, so every OS runs the same command.
+        shell: bash
     steps:
       - uses: actions/checkout@v7
 
