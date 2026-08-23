@@ -11,7 +11,10 @@ LDFLAGS := -s -w \
   -X $(BUILDINFO).Commit=$(COMMIT) \
   -X $(BUILDINFO).Date=$(DATE)
 
-PLATFORMS := darwin/amd64 darwin/arm64 linux/amd64 linux/arm64 windows/amd64
+# Local convenience only — CI and releases both cross-compile straight from
+# the goos/goarch matrix in .goreleaser.yaml. Keep this list in sync with it so
+# `make build-all` reflects what actually ships.
+PLATFORMS := darwin/amd64 darwin/arm64 linux/amd64 linux/arm64 windows/amd64 windows/arm64
 
 .DEFAULT_GOAL := help
 .PHONY: help run build build-all install test cover fmt vet tidy lint vuln snapshot check ci clean

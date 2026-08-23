@@ -131,12 +131,29 @@ make snapshot    # build an unpublished release into dist/
 
 ### CI
 
-Every push and pull request runs five jobs: tests on Linux, macOS, and Windows
-(`-race -shuffle=on`), `golangci-lint`, a `go mod tidy -diff` check, a
-cross-compile of every release target, and `govulncheck`.
+Every push and pull request runs five jobs:
 
-Pushing a `v*` tag runs the test matrix again and only then publishes — see
-[Releasing](#releasing).
+| Job | What it does |
+| --- | --- |
+| `test` | Linux, macOS, and Windows, `-race -shuffle=on` |
+| `lint` | `golangci-lint` |
+| `tidy` | `go mod tidy -diff` and `go mod verify` |
+| `build` | GoReleaser snapshot — every release target, artifacts uploaded |
+| `vuln` | `govulncheck` |
+
+The `build` job runs the real release pipeline without publishing, so a broken
+`.goreleaser.yaml` fails here rather than at tag time in public.
+
+### Downloading binaries without a toolchain
+
+You do not need Go, `make`, or GoReleaser installed to get a build. Every CI
+run attaches the full set of cross-compiled archives:
+
+1. Open the repository's **Actions** tab and pick a **CI** run.
+2. Download the **dsweep-binaries** artifact (kept 14 days).
+
+To build a branch on demand, use **Run workflow** on the CI workflow — it
+accepts `workflow_dispatch` on any branch, no tag required.
 
 ### Layout
 
@@ -171,7 +188,10 @@ platform fails — a tag is cheap to delete, a broken binary in someone's
 package manager is not. Builds are stamped with the commit timestamp rather
 than the build time, so re-releasing a tag produces byte-identical artifacts.
 
-Validate config changes without publishing:
+Release config changes are validated by the `build` job on every push, so
+GoReleaser does not need to be installed anywhere. If you do want to iterate
+locally, `brew install goreleaser` (note `go install` pulls a newer toolchain
+than `go.mod` requires) then:
 
 ```sh
 goreleaser check              # lint .goreleaser.yaml
